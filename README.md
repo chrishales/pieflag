@@ -15,3 +15,5 @@ Version 2.0 has been modified for use in CASA and updated to include wideband an
 Correspondence regarding pieflag is always welcome.
 
 pieflag Version 2.0 will be released under a BSD 3-Clause Licence (open source, commercially useable); refer to the licence in this repository or (when released) the header of ```task_pieflag.py``` for details.
+
+I thank [Jasmin McDonald](http://www.theloop.com.au/JasminMcDonald/portfolio) for designing the pieflag logo.
