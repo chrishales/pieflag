@@ -9,7 +9,11 @@ Let's face it, flagging is laborious and boring. You want a simple and effective
 
 pieflag works by comparing visibility amplitudes in each frequency channel to a 'reference' channel that is rfi-free, or manually ensured to be rfi-free. To operate effectively, pieflag must be supplied with bandpass-calibrated data (preliminary gain-calibration is also preferable).
 
-pieflag has two core modes of operation -- static and dynamic flagging -- with an additional extend mode. Which mode you choose is largely dictated by the type of data you have. An extensive help file is included with pieflag that includes instructions for pre-processing your data and selecting the best mode of operation. You are encouraged to read the full documentation before running pieflag. Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
+pieflag has two core modes of operation -- static and dynamic flagging -- with an additional extend mode. Which mode you choose is largely dictated by the type of data you have.
+
+An extensive help file is included with pieflag that includes instructions for pre-processing your data and selecting the best mode of operation. You are encouraged to read the full documentation before running pieflag.
+
+Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
 Lateset version: 2.0 ([download here](https://github.com/chrishales/pieflag/releases/latest))
 
