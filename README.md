@@ -12,11 +12,15 @@ pieflag works by comparing visibility amplitudes in each frequency channel to a 
 pieflag has two core modes of operation -- static and dynamic flagging -- with an additional extend mode. Which mode you choose is largely dictated by the type of data you have. An extensive help file is included with pieflag that includes instructions for pre-processing your data and selecting the best mode of operation. You are encouraged to read the full documentation before running pieflag. Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
 Lateset version: 2.0 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+
 Requires: CASA Version 4.3.0
 
 pieflag originally written by Enno Middelberg 2005-2006  
+
 Reference: [E. Middelberg, 2006, PASA, 23, 64](http://arxiv.org/abs/astro-ph/0603216)  
+
 Version 2.0 has been modified for use in CASA and updated to include wideband and SEFD effects by Christopher A. Hales.
+
 Reference: [C. A. Hales, E. Middelberg, 2014, Astrophysics Source Code Library, 1408.14](http://adsabs.harvard.edu/abs/2014ascl.soft08014H)
 
 pieflag Version 2.0 is released under a BSD 3-Clause Licence (open source, commercially useable); refer to the licence in this repository or the header of ```task_pieflag.py``` for details.
