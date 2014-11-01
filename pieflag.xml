@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" ?>
+<casaxml xmlns="http://casa.nrao.edu/schema/psetTypes.html"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://casa.nrao.edu/schema/casa.xsd
+    file:///opt/casa/code/xmlcasa/xml/casa.xsd">
+
+    <task type="function" name="pieflag" category="analysis">
+        <shortdescription>Flags bad data by comparing with clean channels in bandpass-calibrated data.</shortdescription>
+        <description>
+                
+                Let's face it, flagging is laborious and boring.
+                
+                You want a simple and effective tool to fight rfi.
+                
+                pieflag does not attempt the overly complex task of
+                ingesting raw un-flagged data in the hope of producing
+                clean output with no further required manual inspection.
+                
+                Instead, pieflag operates on a much simpler philosophy:
+                you need to do some very basic pre-processing of your
+                data so that pieflag can do its job robustly using a
+                minimal set of assumptions.
+                
+                While the amount of documentation below may seem
+                counter to the above pledge of simplicity, don't worry,
+                the content is quite straight-forward. You should read
+                it in full before using pieflag.
+		
+		
+		
+                pieflag works by comparing visibility amplitudes in
+                each frequency channel to a 'reference' channel that
+                is rfi-free, or manually ensured to be rfi-free.
+                pieflag performs this comparison independently for
+                each correlation on each baseline, but will flag all
+                correlations if threshold conditions are met. To
+                operate effectively, pieflag must be supplied with
+                bandpass-calibrated data; preliminary gain-
+		calibration is also preferable (more details below).
+                
+                pieflag has two core modes of operation -- static and
+                dynamic flagging -- with an additional extend mode.
+                Which mode you choose is largely dictated by the
+                type of data you have. Instructions for
+		pre-processing your data and selecting the best
+                mode of operation are provided further below.
+                
+                Once you have carried out your pre-processing and
+                selected the mode of operation, pieflag should work
+                well 'out of the box' with its default parameters.
+		By comparing to a clean reference channel,
+		essentially all bad data will be identified and
+		flagged by pieflag.
+                
+		
+		
+                One reference channel is needed per spectral window.
+                The choice of reference channel is important:
+                whenever the reference channel is unavailable on
+                a given baseline, pieflag will flag all channels on
+                that baseline in the spectral window.
+                
+                If your data exhibits a non-flat spectrum in the
+                log10(amp) vs log10(freq) plane, pieflag can fit
+		and account for a power law or curved power law per
+		correlation per baseline. pieflag can also account
+		for sensitivity variations across your band by
+		taking into account the system equivalent flux
+		density (SEFD) or other similar measure of relative
+		sensitivity.
+                
+		
+		
+		Modes of operation:
+                
+                - DYNAMIC mode flagging:
+                   If you expect the amplitude on a baseline to
+		   vary significantly with time, for example due
+		   to source structure or atmospheric noise, then
+		   choose this mode. Dynamic flagging works by
+		   slicing your data into time chunks. 'chunktime'
+		   should be specified to ensure that the
+		   amplitudes on all baseline remain approximately
+		   constant within the time chunk. For each
+		   correlation on each baseline, this mode will
+		   begin by calculating the median and standard
+		   deviation of the reference channel for each
+		   time chunk. It will then go through each
+		   baseline, channel, and correlation for each
+		   time chunk and compare the median and standard
+		   deviation to the reference channel values
+		   (after accounting for spectral fit and SEFD,
+		   if requested; the former will be performed on
+		   a per-chunk basis). If the standard deviation
+		   exceeds 'stdmax' times the reference channel
+		   value, or if the median exceeds 'maxoffset'
+		   times the observed standard deviation away from
+		   the reference channel median, then the chunk will
+		   be flagged. This is a pseudo-rms, separating the
+		   offset from the data spread. pieflag avoids using
+		   true rms values here to enable efficient flagging
+		   on baselines exhibiting structure (i.e. not just
+		   a smooth spectrum as a function of frequency).
+		   In this way, for structured fields, flagging can
+		   be made more sensitive to changes in standard
+		   deviation than to changes in overall offset
+		   (ultimately, large values of the latter will
+		   indicate spurious data). Set 'maxoffset' by first
+		   checking amp vs freq for a single baseline.
+		
+                - STATIC mode flagging:
+                   If the criteria above for dynamic flagging do
+		   not apply, for example you are looking at an
+		   unresolved calibrator or a sparse field, then
+		   choose this mode. Static mode will begin by
+		   calculating the median amplitude and median
+		   absolute deviation (MAD) of amplitudes for
+                   each baseline and correlation on the reference
+                   channel. It will then go through each correlation
+                   for each channel on each baseline and assign a
+                   'badness' value of 1 to each visibility that has
+                   an amplitude that deviates from the reference
+                   channel's median by more that 'madmax' times the
+                   reference channel's MAD (after accounting for
+                   spectral fit and SEFD, if requested). It will
+                   assign a badness value of 2 if the visibility has
+                   amplitude greater than 2*madmax*MAD. This mode
+                   will then split up your data into bins containing
+                   'binsamples' integration dump timescales. If the
+		   sum of badness values exceeds 1 then the bin is
+		   flagged. To illustrate, the idea here is that a
+		   badness value of 1 with default madmax=6
+		   corresponds to a 4-sigma outlier. The odds of
+		   having two 4-sigma outliers within binsamples=5
+		   samples is equivalent to a discrete 5.6-sigma
+		   event (binomial statistics).
+                
+                - EXTEND mode flagging:
+                   For each baseline and channel, this mode will apply
+		   a sliding time window (independently within each
+		   scan) to examine each correlation. If the fraction
+		   of data flagged (by pieflag) within the window
+		   exceeds a threshold, the whole window will be
+		   flagged. This is useful for flagging periods of bad
+		   data that may be below the thresholds for static
+		   or dynamic flagging, but which are adjacent to bad
+		   data clearly identified by these modes.
+		
+		
+		
+		Let's run through the steps needed to pieflag your data.
+                First, gather the following ingredients:
+                
+                1. Manually flag your bandpass calibrator. This shouldn't
+                   take you very long, and it's good to get acquainted with
+                   your data.
+                
+                2. For each spectral window of your target data, identify
+		   a clean 'reference' channel that is rfi-free. If all
+		   channels are affected by rfi, then pick the cleanest one
+		   and manually flag all offending data on this channel only.
+                
+                3. Bandpass calibrate your data. Use the clean reference
+		   channel in each spectral window to calibrate gains,
+		   so that amplitude fluctuations due to the atmosphere
+		   are largely removed. There is no strong need to
+		   bootstrap the flux density scale from a standard
+		   calibrator. If this is performed, ensure that gain
+		   solutions are not derived using rfi-affected channels.
+                
+		4. Apply your calibration solutions to the data. pieflag
+		   will perform all analysis using the 'CORRECTED_DATA'
+		   column of your measurement set.
+		
+                5. Plot amplitude versus frequency for your data. Check
+		   that the spectrum has not been artificially normalized
+		   by the 'solnorm' parameter (should be false for
+		   bandpass calibration and true for secondary gain
+		   calibration). Estimate the polynomial order in the
+		   log10(amp)-log10(freq) plane. 0th order is flat
+		   (independent of frequency), 1st order is a power law,
+		   2nd order is a curved power law.
+                
+                6. If appropriate, obtain an SEFD curve for your band.
+                   This will be used to scale the sensitivity for each
+                   channel relative to the reference channel in that spw.
+                   For narrow spectral windows this may not be required.
+                   For Jansky VLA data between 0.28-0.48 and 1-50 GHz,
+                   SEFD curves are provided as part of the download
+                   package for pieflag (but without quality assurance;
+                   see more details under the keyword argument help).
+                
+                
+		
+                And now for pieflag's delicious recipe:
+                
+                7. Decide whether you want static or dynamic flagging.
+                   See descriptions of these modes above. The default
+                   parameter values should work well with all data.
+                
+                8. Decide if you want to extend the static or dynamic
+                   flags (hint: probably). See description of this mode
+                   above. The default parameter values should work well.
+                
+                9. Press go, then have a slice of pie. The end result
+                   should not require any additional manual flagging.
+                
+                
+		
+                Assumptions:
+                 * All selected spw's have the same number of channels.
+                 * The integration time for your spw's doesn't change.
+                 * pieflag doesn't need to flag your reference channels
+                 * For a given baseline, if the reference channel for a
+                   correlation is missing (e.g. due to online flags),
+                   then all correlations on all other channels in the
+                   spw will be flagged.
+                 * If one correlation requires flagging in static,
+                   dynamic, or extend mode, all will be flagged.
+                
+                
+		
+                Limitations:
+                * pieflag is not suitable for spectral line experiments
+                  when the observed lines are strong. However, pieflag is
+                  appropriate for spectral line experiments when channels
+                  are dominated by receiver noise.
+		* If you are performing dynamic flagging on a target with
+		  significant structure, the accuracy of spectral fitting
+		  may be degraded. Increase maxoffset to compensate.
+                
+		
+                
+                Descriptions of keyword arguments to pieflag are provided
+                at the end of this help file.
+                
+		
+                
+                Pieflag originally written by Enno Middelberg 2005-2006.
+                Reference: E. Middelberg, 2006, PASA, 23, 64
+                http://arxiv.org/abs/astro-ph/0603216
+                
+                Rewritten for use in CASA and updated to account for
+                wideband and SEFD effects by Christopher A. Hales 2014.
+                                
+                Version 2.0
+                Tested with CASA Version 4.3.0 using Jansky VLA data
+                31 October 2014
+                
+                Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
+                Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
+                for expert advice. Thanks to Emmanuel Momjian for providing
+                Jansky VLA SEFD data for L and X bands (EVLA Memos 152 and
+                166) and to Bryan Butler for providing access to all other
+                bands from the Jansky VLA Exposure Calculator.
+                
+                Code available at: http://github.com/chrishales/pieflag
+                pieflag is released under a BSD 3-Clause Licence; refer to
+		the header in task_pieflag.py for details.
+		Reference: C. A. Hales, E. Middelberg, 2014, Astrophysics
+		Source Code Library, 1408.014
+	        http://adsabs.harvard.edu/abs/2014ascl.soft08014H
+                
+                If you use pieflag we would appreciate your acknowledgement
+                by citing Enno's PASA paper and Chris' ASCL entry (see above).
+                
+                
+        </description>
+
+        <input>
+            <param type="string" name="vis" mustexist="true">
+                <description>input MS</description>
+                <value />
+            </param>
+            <param type="int" name="field">
+                <description>field index number (e.g. 0)</description>
+                <value>0</value>
+            </param>
+            <param type="string" name="refchanfile" mustexist="true">
+                <description>file where reference channel per spw is defined</description>
+                <value />
+            </param>
+            <param type="int" name="fitorder_RR_LL">
+                <description>order of RR/LL spectral fitting (0/1/2)</description>
+                <value>1</value>
+                <allowed kind="enum">
+                    <value>0</value>
+                    <value>1</value>
+                    <value>2</value>
+                </allowed>
+            </param>
+            <param type="int" name="fitorder_RL_LR">
+                <description>order of RL/LR spectral fitting (0/1/2)</description>
+                <value>0</value>
+                <allowed kind="enum">
+                    <value>0</value>
+                    <value>1</value>
+                    <value>2</value>
+                </allowed>
+            </param>
+
+            <param type="bool" name="scalethresh">
+                <description>scale thresholds across band (e.g. using SEFD)</description>
+                <value>False</value>
+            </param>
+            <param type="string" name="SEFDfile" subparam="true">
+                <description>file containing SEFD vs frequency</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>dummytext</value>
+            </param>
+            <param type="bool" name="plotSEFD" subparam="true">
+                <description>plot relative sensitivity assumed across band</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>False</value>
+            </param>
+
+            <param type="bool" name="dynamicflag">
+                <description>dynamic mode flagging</description>
+                <value>False</value>
+            </param>
+            <param type="double" name="chunktime" subparam="true">
+                <description>chunk time (seconds)</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>0.0</value>
+            </param>
+            <param type="double" name="stdmax" subparam="true">
+                <description>standard deviation threshold to flag chunktime</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0.0</value>
+            </param>
+            <param type="double" name="maxoffset" subparam="true">
+                <description>offset threshold in standard deviations (danger!)</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0.0</value>
+            </param>
+
+            <param type="bool" name="staticflag">
+                <description>static mode flagging</description>
+                <value>False</value>
+            </param>
+            <param type="double" name="madmax" subparam="true">
+                <description>MAD threshold for assigning badness to a visibility</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0.0</value>
+            </param>
+            <param type="int" name="binsamples" subparam="true">
+                <description>successive integrations to search for outliers</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0</value>
+            </param>
+
+            <param type="bool" name="extendflag">
+                <description>extend mode flagging</description>
+                <value>False</value>
+            </param>
+            <param type="double" name="boxtime" subparam="true">
+                <description>sliding boxcar width (seconds)</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>0.0</value>
+            </param>
+            <param type="double" name="boxthresh" subparam="true">
+                <description>flag boxtime if flagged fraction exceeds boxthresh (%)</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0.0</value>
+            </param>
+
+
+            <constraints>
+               <when param="scalethresh">
+                    <equals type="bool" value="False"></equals>
+                    <equals type="bool" value="True">
+                        <default param="SEFDfile"><value type="string" mustexist="true"></value></default>
+                        <default param="plotSEFD"><value type="bool">False</value></default>
+                    </equals>
+               </when>
+
+               <when param="dynamicflag">
+                    <equals type="bool" value="False"></equals>
+                    <equals type="bool" value="True">
+                        <default param="chunktime"><value type="double">300.0</value></default>
+                        <default param="stdmax"><value type="double">2.0</value></default>
+                        <default param="maxoffset"><value type="double">50.0</value></default>
+                    </equals>
+                </when>
+
+               <when param="staticflag">
+                    <equals type="bool" value="False"></equals>
+                    <equals type="bool" value="True">
+                        <default param="madmax"><value type="double">6.0</value></default>
+                        <default param="binsamples"><value type="int">5</value></default>
+                    </equals>
+               </when>
+
+                <when param="extendflag">
+                    <equals type="bool" value="False"></equals>
+                    <equals type="bool" value="True">
+                        <default param="boxtime"><value type="double">300.0</value></default>
+                        <default param="boxthresh"><value type="double">10.0</value></default>
+                    </equals>
+                </when>
+            </constraints>
+        </input>
+
+        <returns type="void"/>
+        <example>
+
+----- Detailed description of keyword arguments -----
+
+   
+   Keyword arguments:
+       
+       
+       vis -- Name of input measurement set containing bandpass-calibrated
+              data in the 'CORRECTED_DATA' column.
+       
+       
+       field -- Field index number (integer). pieflag can only operate on a
+                single field at a time.
+       
+       
+       refchanfile -- Name of file where the reference channel per spectral
+                      window is defined. Only the spectral windows included
+                      in this file will be processed. The format is a bit
+                      quirky. The following is a verbatim example of the
+                      single line entry required in "sample_refchan.txt" to
+                      select reference channels 7, 34, and 10 in spectral
+                      windows 0, 4, and 5, respectively:
+                      
+                      {"0":7,"4":34,"5":10}
+       
+       
+       fitorder_RR_LL -- Polynomial order of the spectral fitting for the
+                         RR and LL correlations, using the formula
+                         
+                         log10(visibility amplitude) = a_o
+                                                     + a_1*log10(frequency)
+                                                     + a_2*(log10(frequency))**2
+                         
+                         For order N the fit is performed up to coefficient a_N
+                         using the reference channel data independently for
+                         each correlation on each baseline. Currently supports
+                         orders 0 (frequency independent), 1 (power law), and
+                         2 (curved power law). It falls back to a lower fitorder
+                         when there are not enough spectral windows to fit the
+                         requested order (this will be reported to you if it
+                         takes place).
+       
+       
+       fitorder_RL_LR -- Same as above but for correlations RL and LR.
+       
+       
+       scalethresh  -- If true, madmax and stdmax will be scaled across your
+                       band according to SEFDfile.
+       
+         * SEFDfile -- File containing a measure of the relative sensitivity
+                       across the channels in your band, for example the
+                       system equivalent flux density (SEFD). The input file
+                       should contain two columns with a space between them
+                       (i.e. no characters such as commas). The two columns
+                       are: frequency in Hertz and SEFD in arbitrary units.
+                       The data needs to span the frequency range of the
+                       channels in your selected spectral windows. pieflag
+                       will linearly interpolate the data in SEFDfile to
+                       get the relative sensitivity levels at your channel
+                       frequencies.
+                       
+                       For the Jansky VLA, the SEFD from 0.28-0.48, 1-50 GHz
+                       is provided as part of the download package for pieflag.
+                       This data is provided without any quality assurance!
+                       (As Rick Perley would say, if you want an accurate
+                       SEFD for your band, or anything for that matter, then
+                       measure it yourself.) For L and X bands, the data were
+		       obtained from EVLA Memos 152 and 166, respectively.
+		       For all other bands, the data were extracted from the
+		       Exposure Calculator on 21 August 2014. eg, see
+		       https://science.nrao.edu/facilities/vla/docs/manuals
+                              /oss/performance/sensitivity
+                       Note that for Jansky VLA data observed in 8-bit mode,
+                       subband 0 exhibits features that are not captured in
+                       the SEFD data provided with pieflag. See EVLA Memo 154
+                       for more details. This effect refers to subband 0 as
+                       defined in the OPT, which does not necessarily
+                       correspond to spectral window 0 in a measurement set.
+           
+         * plotSEFD -- If True, a plot will be produced showing the relative
+                       sensitivity assumed by pieflag across your band.
+       
+       
+       dynamicflag   -- If true, dynamic mode flagging will be performed.
+       
+         * chunktime -- Length of time chunk (seconds) in which to compare
+                        statistics to reference channel.
+         
+         * stdmax    -- If the standard deviation for a correlation in a chunk
+                        of data on a given channel and baseline exceeds stdmax
+			times the standard deviation on the reference channel
+			(after accounting for SEFD, if requested), then all
+			correlations on that channel and baseline in that time
+			chunk will be flagged.
+	 
+	 * maxoffset -- If the median for a correlation in a chunk of data
+	                on a given channel and baseline is more than maxoffset
+			times the channel's standard deviation away from the
+			median of the reference channel (after accounting for
+			spectral fit, if requested), then all correlations on
+			that channel and baseline in that time chunk will be
+			flagged.
+       
+       
+       staticflag     -- If true, static mode flagging will be performed.
+       
+         * madmax     -- If the amplitude for a visibility on a given
+                         correlation, channel, and baseline deviates by
+                         more than madmax times the reference channel's
+			 MAD away from the reference channel's median
+			 (after accounting for spectral fit and SEFD,
+			 if requested), assign it a badness value of 1.
+			 If the amplitude is twice as deviant as this,
+			 assign badness value 2.
+         
+         * binsamples -- Number of integrations (dump times) to bin
+                         when searching for excessive outliers.
+       
+       
+       extendflag    -- If true, extend mode flagging will be performed.
+       
+         * boxtime   -- Width (seconds) of the sliding boxcar in which
+                        to calculate the fraction of flagged visibilities
+                        for a given correlation, channel, and baseline.
+                        boxtime is limited to individual scans; it does
+                        not extend over scan boundaries.
+         
+         * boxthresh -- Threshold, given as a percentage (not fraction)
+                        of flagged visibilities in boxtime beyond which
+                        the entire boxcar will be flagged on all
+                        correlations for that channel and baseline.
+       
+       
+        </example>
+    </task>
+</casaxml>
