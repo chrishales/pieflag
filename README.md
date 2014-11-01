@@ -15,7 +15,7 @@ Lateset version: 2.0 ([download here](https://github.com/chrishales/pieflag/rele
 
 Requires: CASA Version 4.3.0
 
-pieflag originally written by Enno Middelberg 2005-2006 (Ref: [E. Middelberg, 2006, PASA, 23, 64](http://arxiv.org/abs/astro-ph/0603216)). Version 2.0 has been modified for use in CASA and updated to include wideband and SEFD effects by Christopher A. Hales (Ref: [C. A. Hales, E. Middelberg, 2014, Astrophysics Source Code Library, 1408.14)](http://adsabs.harvard.edu/abs/2014ascl.soft08014H)).
+pieflag originally written by Enno Middelberg 2005-2006 (Reference: [E. Middelberg, 2006, PASA, 23, 64](http://arxiv.org/abs/astro-ph/0603216)). Version 2.0 has been modified for use in CASA and updated to include wideband and SEFD effects by Christopher A. Hales (Reference: [C. A. Hales, E. Middelberg, 2014, Astrophysics Source Code Library, 1408.14](http://adsabs.harvard.edu/abs/2014ascl.soft08014H)).
 
 pieflag Version 2.0 is released under a BSD 3-Clause Licence (open source, commercially useable); refer to the licence in this repository or the header of ```task_pieflag.py``` for details.
 
