@@ -5,7 +5,7 @@ pieflag
 
 [CASA](http://casa.nrao.edu/) task to flag bad data by drawing upon statistics from reference channels in bandpass-calibrated data.
 
-Let's face it, flagging is laborious and boring. You want a simple and effective tool to fight rfi like a boss. pieflag operates on a simple philosophy: you need to do some very basic pre-processing of your data so that the algorithms can do their job robustly using a minimal set of assumptions.
+Let's face it, flagging is laborious and boring. You want a simple and effective tool to fight rfi like a boss. pieflag operates on a simple philosophy: you need to do some very basic pre-processing of your data so that the code can do its job robustly using a minimal set of assumptions.
 
 pieflag works by comparing visibility amplitudes in each frequency channel to a 'reference' channel that is rfi-free, or manually ensured to be rfi-free. To operate effectively, pieflag must be supplied with bandpass-calibrated data (preliminary gain-calibration is also preferable).
 
