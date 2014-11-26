@@ -38,7 +38,11 @@ from scipy.interpolate import interp1d
 #   1.1    Jan2006  Various upgrades by Enno Middelberg
 #   2.0  31Oct2014  Release of updated and CASA-compatible version
 #                   written by Christopher A. Hales
+#   2.1  26Nov2014  Fixed subscan bug (only operate on '0') and
+#                   logger default value printout
 #
+
+# See additional information in pieflag function
 
 def pieflag_getflagstats(vis,field,spw,npol):
     casalog.filter('WARN')
@@ -371,7 +375,7 @@ def pieflag_flag(vis,field,
                         tempscankeys.sort()
                         tempscan = []
                         for j in tempscankeys:
-                            tempscan.append(tempscanfull[str(j)][str(field)]['nRow'])
+                            tempscan.append(tempscanfull[str(j)]['0']['nRow'])
                         
                         # only consider flags that have been set by pieflag, not pre-existing flags
                         j=0
@@ -444,7 +448,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 2.0 released 31 October 2014
+    #    Version 2.1 released 26 November 2014
     #    Tested with CASA Version 4.3.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
