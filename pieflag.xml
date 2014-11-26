@@ -218,6 +218,8 @@
                    spw will be flagged.
                  * If one correlation requires flagging in static,
                    dynamic, or extend mode, all will be flagged.
+                 * Scans do not have multiple subscans. If they do,
+                   then pieflag will only operate on subscan 0.
                 
                 
 		
@@ -244,9 +246,9 @@
                 Rewritten for use in CASA and updated to account for
                 wideband and SEFD effects by Christopher A. Hales 2014.
                                 
-                Version 2.0
+                Version 2.1
                 Tested with CASA Version 4.3.0 using Jansky VLA data
-                31 October 2014
+                26 November 2014
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -322,17 +324,17 @@
             <param type="double" name="chunktime" subparam="true">
                 <description>chunk time (seconds)</description>
                 <!-- dummy value, see constraints section below for default value -->
-                <value>0.0</value>
+                <value>300.0</value>
             </param>
             <param type="double" name="stdmax" subparam="true">
                 <description>standard deviation threshold to flag chunktime</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0.0</value>
+		<value>2.0</value>
             </param>
             <param type="double" name="maxoffset" subparam="true">
                 <description>offset threshold in standard deviations (danger!)</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0.0</value>
+		<value>50.0</value>
             </param>
 
             <param type="bool" name="staticflag">
@@ -342,12 +344,12 @@
             <param type="double" name="madmax" subparam="true">
                 <description>MAD threshold for assigning badness to a visibility</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0.0</value>
+		<value>6.0</value>
             </param>
             <param type="int" name="binsamples" subparam="true">
                 <description>successive integrations to search for outliers</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0</value>
+		<value>5</value>
             </param>
 
             <param type="bool" name="extendflag">
@@ -357,12 +359,12 @@
             <param type="double" name="boxtime" subparam="true">
                 <description>sliding boxcar width (seconds)</description>
                 <!-- dummy value, see constraints section below for default value -->
-                <value>0.0</value>
+                <value>300.0</value>
             </param>
             <param type="double" name="boxthresh" subparam="true">
                 <description>flag boxtime if flagged fraction exceeds boxthresh (%)</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0.0</value>
+		<value>10.0</value>
             </param>
 
 
