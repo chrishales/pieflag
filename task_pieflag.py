@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-# Copyright (c) 2014, Christopher A. Hales
+# Copyright (c) 2014-2015, Christopher A. Hales
 # All rights reserved.
 #
 # BSD 3-Clause Licence
@@ -40,6 +40,8 @@ from scipy.interpolate import interp1d
 #                   written by Christopher A. Hales
 #   2.1  26Nov2014  Fixed subscan bug (only operate on '0') and
 #                   logger default value printout
+#   2.2  25Mar2015  Updated handling for pre-flagged baselines and
+#                   hid unimportant runtime display messages
 #
 
 # See additional information in pieflag function
@@ -138,6 +140,7 @@ def pieflag_flag(vis,field,
                     #           ' && WEIGHT['+str(p)+']>0 giving '
                     tempstr2 = '[abs(CORRECTED_DATA['+str(p)+','+str(refchan[s])+'])]])'
                     tempval = tb.calc('count'+tempstr1+tempstr2)[0]
+                    
                     if tempval > 0:
                         validspw[p][s] = 1
                         if staticflag:
@@ -154,12 +157,17 @@ def pieflag_flag(vis,field,
                         validspw[0][s] = 0
                         casalog.filter('WARN')
                         ms.reset()
-                        ms.msselect({'field':str(field),'baseline':str(ant1)+'&&'+str(ant2),'spw':str(spw[s])})
-                        # for some reason I can't do the following with flag_row? That or plotms is broken...
-                        tempflag = ms.getdata('flag')
-                        tempflag['flag'][:]=True
-                        ms.putdata(tempflag)
-                        casalog.filter('INFO')
+                        try:
+                            ms.msselect({'field':str(field),'baseline':str(ant1)+'&&'+str(ant2),'spw':str(spw[s])})
+                            # for some reason I can't do the following with flag_row? That or plotms is broken...
+                            tempflag = ms.getdata('flag')
+                            tempflag['flag'][:]=True
+                            ms.putdata(tempflag)
+                            casalog.filter('INFO')
+                        except:
+                            # this gets triggered if the entire baseline is already flagged
+                            casalog.filter('INFO')
+                        
                         break
             
             # get static spectral fits for each polarization
@@ -183,7 +191,7 @@ def pieflag_flag(vis,field,
                                                                 np.log10(Srcy[0:,p,0][validspw[p]>0]),\
                                                                 tempfitorderS[p],w=1.0/np.log10(Srcy[0:,p,1][validspw[p]>0]))
             
-            if dynamicflag:
+            if dynamicflag and sum(validspw[0]) > 0:
                 # Don't assume that the same number of integrations (dump times) are present in each spw.
                 # This requirement makes the code messy
                 casalog.filter('WARN')
@@ -267,9 +275,12 @@ def pieflag_flag(vis,field,
                                              ' pol='+pSTR[p]+' time='+t1+'-'+t2+\
                                              ' has been reduced to '+str(int(tempfitorderD[chunk,p])),'WARN')
                             
+                            # prevent numerical warning when MAD=0 (ie single sample)
+                            tempDrcy = Drcy[0:,p,chunk,1][validspwD[p,chunk]>0]
+                            tempDrcy[tempDrcy==0] = 1e-200
                             specfitcoeffD[p,chunk,0:tempfitorderD[chunk,p]+1] = \
-                                np.polyfit(np.log10(rcx[validspwD[p,chunk]>0]),np.log10(Drcy[0:,p,chunk,0][validspwD[p,chunk]>0]),\
-                                tempfitorderD[chunk,p],w=1.0/np.log10(Drcy[0:,p,chunk,1][validspwD[p,chunk]>0]))
+                              np.polyfit(np.log10(rcx[validspwD[p,chunk]>0]),np.log10(Drcy[0:,p,chunk,0][validspwD[p,chunk]>0]),\
+                              tempfitorderD[chunk,p],w=1.0/np.log10(tempDrcy))
                     
                     chunk += 1
                     moretodo = ms.iternext()
@@ -329,7 +340,7 @@ def pieflag_flag(vis,field,
                                 for w in window:
                                     if sum(tempbad[j:j+w]) >= 2:
                                         tempflagpf[0:npol,f,j:j+w] = 1
-					tempflag['flag'][0:npol,f,j:j+w] = True
+                                        tempflag['flag'][0:npol,f,j:j+w] = True
                                     
                                     j+=w
                     
@@ -353,13 +364,15 @@ def pieflag_flag(vis,field,
                                         
                                         # get channel data
                                         tempdatachan = np.multiply(tempdata[p,f,tL:tU+1],np.invert(tempflag['flag'][p,f,tL:tU+1]))
-                                        tempstd = np.std(tempdatachan[tempdatachan>0])/sefd[s][f]
                                         
-                                        if (tempstd >= stdmax*Drcy[s,p,chunk,1]) or \
-                                           (abs(np.median(tempdatachan[tempdatachan>0])-specfit) >= maxoffset*tempstd):
-                                            # if flagging needs to take place in one polarization, just flag them all
-                                            tempflagpf[0:npol,f,tL:tU+1] = 2
-                                            tempflag['flag'][0:npol,f,tL:tU+1] = True
+                                        # prevent display of runtime warnings when tempdatachan is empty or all-zero
+                                        if len(tempdatachan[tempdatachan>0]) > 0:
+                                            tempstd = np.std(tempdatachan[tempdatachan>0])/sefd[s][f]
+                                            if (tempstd >= stdmax*Drcy[s,p,chunk,1]) or \
+                                               (abs(np.median(tempdatachan[tempdatachan>0])-specfit) >= maxoffset*tempstd):
+                                                # if flagging needs to take place in one polarization, just flag them all
+                                                tempflagpf[0:npol,f,tL:tU+1] = 2
+                                                tempflag['flag'][0:npol,f,tL:tU+1] = True
                                     
                                 else:
                                     # If the reference channel for any one polarization isn't present,
@@ -448,7 +461,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 2.1 released 26 November 2014
+    #    Version 2.2 released 25 March 2015
     #    Tested with CASA Version 4.3.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
