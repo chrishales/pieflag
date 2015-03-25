@@ -15,7 +15,7 @@ An extensive help file is included with pieflag that includes instructions for p
 
 Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
-Lateset version: 2.1 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+Lateset version: 2.2 ([download here](https://github.com/chrishales/pieflag/releases/latest))
 
 Requires: CASA Version 4.3.0
 
