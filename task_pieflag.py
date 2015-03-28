@@ -4,6 +4,8 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+from simple_cluster import *
+from simple_cluster import JobData
 
 # Copyright (c) 2014-2015, Christopher A. Hales
 # All rights reserved.
@@ -42,6 +44,7 @@ from scipy.interpolate import interp1d
 #                   logger default value printout
 #   2.2  25Mar2015  Updated handling for pre-flagged baselines and
 #                   hid unimportant runtime display messages
+#   3.0  27Mar2015  Enabled parallel processing
 #
 
 # See additional information in pieflag function
@@ -67,7 +70,8 @@ def pieflag_getflagstats(vis,field,spw,npol):
     
     return flagstats
 
-def pieflag_flag(vis,field,
+def pieflag_flag(vis,mypath,
+                 threadID,nthreads,field,
                  vtbleLIST,inttime,nant,bL,nb,
                  ddid,spw,refchan,nchan,npol,
                  fitorderLIST,sefdLIST,
@@ -79,7 +83,19 @@ def pieflag_flag(vis,field,
     # while accounting for a spectral fit and the SEFD.
     # Perform static, dynamic, and extend operations if requested
     
-    casalog.post('    status: 0% complete (updates delivered every 10%)')
+    # vis needs to be the first input so that simple_cluster doesn't have a simple_cluster_f**k
+    visMASTER = vis
+    visMASTERfull = mypath + '/' + visMASTER
+    if threadID == -1:
+        casalog.post('    status: 0% complete (updates delivered every 10%)')
+        vis = visMASTERfull
+    else:
+        casalog.post('    thread '+str(threadID)+'/'+str(nthreads)+' status: 0% complete (updates delivered every 10%)')
+        if threadID == 1:
+            vis = visMASTERfull
+        else:
+            vis = mypath + '/' + 'pieflag_temp' + str(threadID) + '_' + visMASTER
+            os.system('cp -r '+ visMASTERfull + ' ' + vis)
     
     vtble = np.array(vtbleLIST)
     sefd = np.array(sefdLIST)
@@ -115,6 +131,9 @@ def pieflag_flag(vis,field,
         kernellen = int(boxtime/inttime)
         #kernel = np.ones(kernellen)
     
+    # forcefully remove all lock files
+    os.system('find '+vis+' -name "*lock" -print | xargs rm')
+    
     tb.open(vis)
     ms.open(vis,nomodify=False)
     printupdate=np.ones(9).astype(bool)
@@ -124,7 +143,10 @@ def pieflag_flag(vis,field,
         if b >= bL and b < bL+nb:
             if checkprint:
                 if printupdate[printcounter-1] and b-bL+1>nb/10*printcounter:
-                    casalog.post('    status: '+str(10*printcounter)+'% complete')
+                    if threadID == -1:
+                        casalog.post('    status: '+str(10*printcounter)+'% complete')
+                    else:
+                        casalog.post('    thread '+str(threadID)+'/'+str(nthreads)+' status: '+str(10*printcounter)+'% complete')
                     printupdate[printcounter-1]=False
                     printcounter+=1
                     if printcounter > 9:
@@ -425,7 +447,11 @@ def pieflag_flag(vis,field,
     
     ms.close()
     tb.close()
-    casalog.post('    status: 100% complete')
+    if threadID == -1:
+        casalog.post('    status: 100% complete')
+    else:
+        casalog.post('    thread '+str(threadID)+'/'+str(nthreads)+' status: 100% complete')
+    
     return
 
 def pieflag(vis,
@@ -445,23 +471,27 @@ def pieflag(vis,
             binsamples,
             extendflag,
             boxtime,        # extendflag parameters
-            boxthresh):
+            boxthresh,
+            mycluster,
+            numthreads,     # parallel parameters
+            configfile):
 
     #
     # Task pieflag
     #    Flags bad data by comparing with clean channels in bandpass-calibrated data.
     #
     #    Original reference: E. Middelberg, 2006, PASA, 23, 64
-    #    Rewritten for use in CASA and updated to account for
-    #    wideband and SEFD effects by Christopher A. Hales 2014.
-    #    Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
+    #    Rewritten for use in CASA and updated to account for wideband
+    #    and SEFD effects by Christopher A. Hales 2014.
+    #
+    #    Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern, James Robnett,
     #    Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
     #    for expert advice. Thanks to Emmanuel Momjian for providing
     #    Jansky VLA SEFD data for L and X bands (EVLA Memos 152 and 166)
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 2.2 released 25 March 2015
+    #    Version 3.0 released 27 March 2015
     #    Tested with CASA Version 4.3.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
@@ -472,6 +502,7 @@ def pieflag(vis,
     
     startTime = time.time()
     casalog.origin('pieflag')
+    casalog.post('--> pieflag version 3.0')
     
     if (not staticflag) and (not dynamicflag):
         casalog.post('*** ERROR: You need to select static or dynamic flagging.', 'ERROR')
@@ -481,6 +512,40 @@ def pieflag(vis,
     ms.open(vis)
     vis=ms.name()
     ms.close()
+    mypath=os.path.split(vis)[0]
+    myname=os.path.split(vis)[1]
+    
+    if not mycluster:
+        # don't start parallel environment if numthreads=1
+        if numthreads == 1:
+            nthreads=1
+        else:
+            if numthreads == 0:
+                numthreads = 0.9
+            
+            hostname=os.uname()[1]
+            configfile = 'pieflag_cluster.conf'
+            f = open(configfile,'w')
+            f.write('# CASA cluster configuration file\n')
+            f.write('# See simple_cluster help file for examples\n')
+            f.write('# <hostname>, <number of engines>, <work directory>, <fraction of total RAM>, <RAM per engine>\n')
+            f.write(hostname+', '+str(numthreads)+', '+mypath)
+            f.close()
+    
+    if mycluster or (not mycluster and numthreads != 1):
+        casalog.post('--> Initializing parallel cluster.')
+        sc = simple_cluster('pieflag_cluster-monitoring.log')
+        sc.init_cluster(configfile,'pieflag_cluster-cache')
+        try:
+            sc._cluster._cluster__client.execute('from task_pieflag import pieflag_flag')
+        except:
+            casalog.post('*** ERROR: Add the directory containing mytasks.py to PYTHONPATH.', 'ERROR')
+            casalog.post('*** ERROR: Exiting pieflag.', 'ERROR')
+            return
+        
+        sc._cluster._cluster__client.push(dict(main_casa_log=casa['files']['logfile']))
+        sc._cluster._cluster__client.execute("casalog.setlogfile(main_casa_log)")
+        nthreads = len(sc._cluster.get_ids())
     
     # load in reference channel details
     # OK, there are probably more elegant ways
@@ -527,6 +592,9 @@ def pieflag(vis,
     tb.close
     nant=atble.shape[0]
     nbaselines=nant*(nant-1)/2
+    
+    if nbaselines < nthreads:
+        nthreads = nbaselines
     
     # channel to frequency (Hz) conversion
     tb.open(vis+'/SPECTRAL_WINDOW')
@@ -679,14 +747,83 @@ def pieflag(vis,
         boxtime = 0
         boxthresh = 0
     
-    casalog.post('--> pieflag will now flag your data...')
-    
-    pieflag_flag(vis,field,vtble.tolist(),inttime,nant,0,nbaselines,
-                 ddid,spw,refchan,nchan,npol,
-                 fitorder.tolist(),sefd.tolist(),
-                 staticflag,madmax,binsamples,
-                 dynamicflag,chunktime,stdmax,maxoffset,
-                 extendflag,boxtime,boxthresh)
+    if not mycluster and numthreads == 1:
+        casalog.post('--> pieflag will now flag your data in serial mode.')
+        
+        threadID = -1
+        
+        pieflag_flag(myname,mypath,
+                     threadID,nthreads,field,
+                     vtble.tolist(),inttime,nant,0,nbaselines,
+                     ddid,spw,refchan,nchan,npol,
+                     fitorder.tolist(),sefd.tolist(),
+                     staticflag,madmax,binsamples,
+                     dynamicflag,chunktime,stdmax,maxoffset,
+                     extendflag,boxtime,boxthresh)
+    else:
+        casalog.post('--> pieflag will now flag your data using '+str(nthreads)+' parallel threads.')
+        if nthreads-1>1:
+            casalog.post('    '+str(nthreads-1)+' copies of your MS will be created and later removed.')
+        else:
+            casalog.post('    1 copy of your MS will be created and later removed.')
+        
+        threadsplit = np.array_split(np.arange(nbaselines),nthreads)
+        bL = np.array([threadsplit[0][0]])
+        nb = np.array([len(threadsplit[0])])
+        for i in range(nthreads-1):
+            bL = np.append(bL,[threadsplit[i+1][0]],axis=0)
+            nb = np.append(nb,[len(threadsplit[i+1])],axis=0)
+        
+        queue=JobQueueManager()
+        queue.clearJobs()
+        myjob=[]
+        threadID=1
+        for i in range(nthreads):
+            myjob.append(JobData('pieflag_flag',{'vis':myname,'mypath':mypath,
+                        'threadID':threadID,'nthreads':nthreads,'field':field,
+                        'vtbleLIST':vtble.tolist(),'inttime':inttime,'nant':nant,'bL':bL[i],'nb':nb[i],
+                        'ddid':ddid,'spw':spw,'refchan':refchan,'nchan':nchan,'npol':npol,
+                        'fitorderLIST':fitorder.tolist(),'sefdLIST':sefd.tolist(),
+                        'staticflag':staticflag,'madmax':madmax,'binsamples':binsamples,
+                        'dynamicflag':dynamicflag,'chunktime':chunktime,'stdmax':stdmax,'maxoffset':maxoffset,
+                        'extendflag':extendflag,'boxtime':boxtime,'boxthresh':boxthresh}))
+            queue.addJob(myjob[i])
+            threadID += 1
+        
+        queue.executeQueue()
+        
+        casalog.filter('WARN')
+        if nthreads > 1:
+            # get flag table from original MS (thread 1)
+            ms.open(vis)
+            ms.msselect({'field':str(field)})
+            flagmaster = ms.getdata('flag')['flag']
+            ms.close()
+            # merge flags and remove copied datasets
+            for i in range(nthreads-1):
+                tempvis = mypath + '/' + 'pieflag_temp' + str(i+2) + '_' + myname
+                ms.open(tempvis)
+                ms.msselect({'field':str(field)})
+                tempflag = ms.getdata('flag')['flag']
+                ms.close()
+                flagmasterNEW = np.logical_or(flagmaster,tempflag)
+                flagmaster = np.copy(flagmasterNEW)
+                os.system('rm -rf '+tempvis)
+            
+            tempflag = []
+            flagmasterNEW = []
+            ms.open(vis,nomodify=False)
+            ms.msselect({'field':str(field)})
+            ms.putdata({'flag':flagmaster})
+            ms.close()
+            flagmaster = []
+        
+        sc.stop_cluster()
+        casalog.filter('INFO')
+        
+        # remove logfiles produced by parallel processing, they don't contain any content
+        os.system('rm '+mypath+'/engine-*.log')
+        os.system('rm -rf '+mypath+'/pieflag_cluster-cache')
     
     # show updated flagging statistics
     casalog.post('--> Statistics of final flags (including pre-existing):')
@@ -718,6 +855,9 @@ def pieflag(vis,
             outstr='    data flagged in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
         
         casalog.post(outstr)
+    
+    # forcefully remove all lock files
+    os.system('find '+vis+' -name "*lock" -print | xargs rm')
     
     t=time.time()-startTime
     casalog.post('--> pieflag run time:  '+str(int(t//3600))+' hours  '+\
