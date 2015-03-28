@@ -209,6 +209,10 @@
                 
 		
                 Assumptions:
+                 * Lock files are unimportant; pieflag will remove them.
+                 * Existing flags are backed up, either from a previous
+                   task (e.g. applycal) or using flagmanager (mode=save).
+                   pieflag will not create a backup prior to operation.
                  * All selected spw's have the same number of channels.
                  * The integration time for your spw's doesn't change.
                  * pieflag doesn't need to flag your reference channels
@@ -234,7 +238,7 @@
                 
 		
                 
-                Descriptions of keyword arguments to pieflag are provided
+                Detailed descriptions of keyword arguments are provided
                 at the end of this help file.
                 
 		
@@ -246,9 +250,9 @@
                 Rewritten for use in CASA and updated to account for
                 wideband and SEFD effects by Christopher A. Hales 2014.
                                 
-                Version 2.2
+                Version 3.0
                 Tested with CASA Version 4.3.0 using Jansky VLA data
-                25 March 2015
+                27 March 2015
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -367,6 +371,22 @@
 		<value>10.0</value>
             </param>
 
+            <param type="bool" name="mycluster">
+                <description>user defined cluster for parallelism? (False=automatic)</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>False</value>
+            </param>
+            <param type="int" name="numthreads" subparam="true">
+                <description>number of threads on local host (0=90% CPU, 1=serial)</description>
+                <!-- dummy value, see constraints section below for default value -->
+		<value>0</value>
+            </param>
+            <param type="string" name="configfile" subparam="true">
+                <description>name of file containing cluster details</description>
+                <!-- dummy value, see constraints section below for default value -->
+                <value>default</value>
+            </param>
+
 
             <constraints>
                <when param="scalethresh">
@@ -384,7 +404,7 @@
                         <default param="stdmax"><value type="double">2.0</value></default>
                         <default param="maxoffset"><value type="double">50.0</value></default>
                     </equals>
-                </when>
+               </when>
 
                <when param="staticflag">
                     <equals type="bool" value="False"></equals>
@@ -394,20 +414,29 @@
                     </equals>
                </when>
 
-                <when param="extendflag">
+               <when param="extendflag">
                     <equals type="bool" value="False"></equals>
                     <equals type="bool" value="True">
                         <default param="boxtime"><value type="double">300.0</value></default>
                         <default param="boxthresh"><value type="double">10.0</value></default>
                     </equals>
-                </when>
+               </when>
+		
+               <when param="mycluster">
+                    <equals type="bool" value="False">
+                        <default param="numthreads"><value type="int">1</value></default>
+                    </equals>
+                    <equals type="bool" value="True">
+                        <default param="configfile"><value type="string" mustexist="true">pieflag_cluster-config.txt</value></default>
+                    </equals>
+               </when>
             </constraints>
         </input>
 
         <returns type="void"/>
         <example>
 
------ Detailed description of keyword arguments -----
+----- Detailed descriptions of keyword arguments -----
 
    
    Keyword arguments:
@@ -537,6 +566,30 @@
                         of flagged visibilities in boxtime beyond which
                         the entire boxcar will be flagged on all
                         correlations for that channel and baseline.
+       
+       
+       mycluster -- If true, specify a custom cluster file for parallel
+                    processing. If False, pieflag will set up a default
+                    cluster using numthreads on your local host.
+                    
+                    NOTE: The current version of pieflag makes use of CASA's
+                          parallel framework. However, the task 'partition'
+                          cannot currently partition baselines. Until this
+                          becomes available, pieflag will create copies of
+                          your MS for each thread to operate on and remove
+                          them when done. pieflag will not check if you have
+                          enough disk space to do this.
+         
+         * numthreads  -- Number of threads (integer) for parallel
+                          processing on your local host. For N=0, pieflag
+                          will utilize as many threads as possible up to
+                          90% of idle CPU capacity. For N>0, pieflag will
+                          create N-1 copies of your MS. Performance will
+                          degrade if N parallel threads cannot be
+                          accommodated by your system (/proc/cpuinfo).
+         
+         * configfile  -- Name of file containing custom cluster configuration.
+                          See CASA's simple_cluster helpfile for examples.
        
        
         </example>
