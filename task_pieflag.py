@@ -44,7 +44,7 @@ from simple_cluster import JobData
 #                   logger default value printout
 #   2.2  25Mar2015  Updated handling for pre-flagged baselines and
 #                   hid unimportant runtime display messages
-#   3.0  27Mar2015  Enabled parallel processing
+#   3.0  28Mar2015  Enabled parallel processing
 #
 
 # See additional information in pieflag function
@@ -130,9 +130,6 @@ def pieflag_flag(vis,mypath,
     if extendflag:
         kernellen = int(boxtime/inttime)
         #kernel = np.ones(kernellen)
-    
-    # forcefully remove all lock files
-    os.system('find '+vis+' -name "*lock" -print | xargs rm')
     
     tb.open(vis)
     ms.open(vis,nomodify=False)
@@ -491,7 +488,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 3.0 released 27 March 2015
+    #    Version 3.0 released 28 March 2015
     #    Tested with CASA Version 4.3.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
@@ -746,6 +743,9 @@ def pieflag(vis,
     if not extendflag:
         boxtime = 0
         boxthresh = 0
+    
+    # forcefully remove all lock files
+    os.system('find '+vis+' -name "*lock" -print | xargs rm')
     
     if not mycluster and numthreads == 1:
         casalog.post('--> pieflag will now flag your data in serial mode.')
