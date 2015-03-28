@@ -11,11 +11,11 @@ pieflag works by comparing visibility amplitudes in each frequency channel to a 
 
 pieflag has two core modes of operation -- static and dynamic flagging -- with an additional extend mode. Which mode you choose is largely dictated by the type of data you have.
 
-An extensive help file is included with pieflag that includes instructions for pre-processing your data and selecting the best mode of operation. You are encouraged to read the full documentation before running pieflag.
+An extensive help file is included with pieflag that includes instructions for pre-processing your data and selecting the best modes of operation. You are strongly encouraged to read the full documentation before running pieflag.
 
 Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
-Lateset version: 2.2 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+Lateset version: 3.0 ([download here](https://github.com/chrishales/pieflag/releases/latest))
 
 Requires: CASA Version 4.3.0
 
@@ -32,11 +32,11 @@ Installation
 
 Download the latest version of the source files from [here](https://github.com/chrishales/pieflag/releases/latest).
 
-Place the source files into a directory containing your measurement set. Without changing directories, open CASA and type
+Place the source files into a directory containing your measurement set. Add this directory to your ```PYTHONPATH```. Without changing directories, open CASA and type
 ```
 os.system('buildmytasks')
 ```
-then exit CASA. A number of files should have been produced, including ```mytasks.py```. Reopen CASA and type
+then exit CASA. A number of files should have been produced, including ```mytasks.py```. In a fresh terminal, return to your directory, reopen CASA, and type
 ```
 execfile('mytasks.py')
 ```
@@ -50,10 +50,11 @@ help pieflag
 ```
 Now set some parameters and press go!
 
-For a more permanent installation, go to the hidden directory ```.casa``` which resides in your home directory and create a file called ```init.py```. In this file, put the line
+For a more permanent installation, place the source files into a dedicated pieflag code directory and perform the steps above. Then go to the hidden directory ```.casa``` which resides in your home directory and create a file called ```init.py```. In this file, put the line
 ```
-execfile('/<path_to_task_directory>/mytasks.py')
+execfile('/<path_to_pieflag_directory>/mytasks.py')
 ```
+pieflag will now be available when you open a fresh terminal and start CASA within any directory.
 
 Acknowledging use of pieflag
 ======
