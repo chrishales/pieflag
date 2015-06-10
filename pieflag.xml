@@ -213,7 +213,9 @@
                  * Existing flags are backed up, either from a previous
                    task (e.g. applycal) or using flagmanager (mode=save).
                    pieflag will not create a backup prior to operation.
+                 * Data is in either the circular or linear feed basis.
                  * All selected spw's have the same number of channels.
+                 * Spw's are ordered with increasing frequency.
                  * The integration time for your spw's doesn't change.
                  * pieflag doesn't need to flag your reference channels
                  * For a given baseline, if the reference channel for a
@@ -250,9 +252,9 @@
                 Rewritten for use in CASA and updated to account for
                 wideband and SEFD effects by Christopher A. Hales 2014.
                                 
-                Version 3.0
+                Version 3.1
                 Tested with CASA Version 4.3.0 using Jansky VLA data
-                28 March 2015
+                10 June 2015
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -379,7 +381,7 @@
             <param type="int" name="numthreads" subparam="true">
                 <description>number of threads on local host (0=90% CPU, 1=serial)</description>
                 <!-- dummy value, see constraints section below for default value -->
-		<value>0</value>
+		<value>1</value>
             </param>
             <param type="string" name="configfile" subparam="true">
                 <description>name of file containing cluster details</description>
@@ -461,8 +463,9 @@
                       {"0":7,"4":34,"5":10}
        
        
-       fitorder_RR_LL -- Polynomial order of the spectral fitting for the
-                         RR and LL correlations, using the formula
+       fitorder_RR_LL -- Polynomial order of the spectral fitting for the RR
+                         and LL correlations (or XX and YY if your data is in
+                         the linear feed basis), using the formula
                          
                          log10(visibility amplitude) = a_o
                                                      + a_1*log10(frequency)
@@ -478,7 +481,8 @@
                          takes place).
        
        
-       fitorder_RL_LR -- Same as above but for correlations RL and LR.
+       fitorder_RL_LR -- Same as above but for correlations RL and LR (or XY
+                         and YX if your data is in the linear feed basis).
        
        
        scalethresh  -- If true, madmax and stdmax will be scaled across your
