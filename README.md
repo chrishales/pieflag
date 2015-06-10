@@ -32,7 +32,7 @@ Installation
 
 Download the latest version of the source files from [here](https://github.com/chrishales/pieflag/releases/latest).
 
-Place the source files into a directory containing your measurement set. Add this directory to your ```PYTHONPATH```. Without changing directories, open CASA and type
+Place the source files into a directory containing your measurement set. Add the source file directory to your ```PYTHONPATH```. Without changing directories, open CASA and type
 ```
 os.system('buildmytasks')
 ```
