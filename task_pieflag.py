@@ -45,11 +45,14 @@ from simple_cluster import JobData
 #   2.2  25Mar2015  Updated handling for pre-flagged baselines and
 #                   hid unimportant runtime display messages
 #   3.0  28Mar2015  Enabled parallel processing
+#   3.1  10Jun2015  Added error messages for SEFD extrapolation
+#                   and integration time rounding problem, and
+#                   fixed default numthreads.
 #
 
 # See additional information in pieflag function
 
-def pieflag_getflagstats(vis,field,spw,npol):
+def pieflag_getflagstats(vis,field,spw,npol,feedbasis):
     casalog.filter('WARN')
     af.open(msname=vis)
     af.selectdata(field=str(field),spw=str(spw))
@@ -59,13 +62,23 @@ def pieflag_getflagstats(vis,field,spw,npol):
     temp=af.run(writeflags=False)
     af.done
     casalog.filter('INFO')
-    RR=temp['report0']['correlation']['RR']['flagged'] / temp['report0']['correlation']['RR']['total'] * 100
-    LL=temp['report0']['correlation']['LL']['flagged'] / temp['report0']['correlation']['LL']['total'] * 100
+    if feedbasis:
+        RR=temp['report0']['correlation']['RR']['flagged'] / temp['report0']['correlation']['RR']['total'] * 100
+        LL=temp['report0']['correlation']['LL']['flagged'] / temp['report0']['correlation']['LL']['total'] * 100
+    else:
+        RR=temp['report0']['correlation']['XX']['flagged'] / temp['report0']['correlation']['XX']['total'] * 100
+        LL=temp['report0']['correlation']['YY']['flagged'] / temp['report0']['correlation']['YY']['total'] * 100
+    
     comb=temp['report0']['flagged'] / temp['report0']['total'] * 100
     flagstats=np.array([RR,LL,comb])
     if npol == 4:
-        RL=temp['report0']['correlation']['RL']['flagged'] / temp['report0']['correlation']['RL']['total'] * 100
-        LR=temp['report0']['correlation']['LR']['flagged'] / temp['report0']['correlation']['LR']['total'] * 100
+        if feedbasis:
+            RL=temp['report0']['correlation']['RL']['flagged'] / temp['report0']['correlation']['RL']['total'] * 100
+            LR=temp['report0']['correlation']['LR']['flagged'] / temp['report0']['correlation']['LR']['total'] * 100
+        else:
+            RL=temp['report0']['correlation']['XY']['flagged'] / temp['report0']['correlation']['XY']['total'] * 100
+            LR=temp['report0']['correlation']['YX']['flagged'] / temp['report0']['correlation']['YX']['total'] * 100
+        
         flagstats=np.append(flagstats,[RL,LR])
     
     return flagstats
@@ -73,7 +86,7 @@ def pieflag_getflagstats(vis,field,spw,npol):
 def pieflag_flag(vis,mypath,
                  threadID,nthreads,field,
                  vtbleLIST,inttime,nant,bL,nb,
-                 ddid,spw,refchan,nchan,npol,
+                 ddid,spw,refchan,nchan,npol,feedbasis,
                  fitorderLIST,sefdLIST,
                  staticflag,madmax,binsamples,
                  dynamicflag,chunktime,stdmax,maxoffset,
@@ -105,13 +118,22 @@ def pieflag_flag(vis,mypath,
     nbaselines=nant*(nant-1)/2
     ant1 = 0
     ant2 = 1
-    pSTR = ['RR']
-    if npol == 2:
-        pSTR.append('LL')
-    elif npol == 4:
-        pSTR.append('RL')
-        pSTR.append('LR')
-        pSTR.append('LL')
+    if feedbasis:
+        pSTR = ['RR']
+        if npol == 2:
+            pSTR.append('LL')
+        elif npol == 4:
+            pSTR.append('RL')
+            pSTR.append('LR')
+            pSTR.append('LL')
+    else:
+        pSTR = ['XX']
+        if npol == 2:
+            pSTR.append('YY')
+        elif npol == 4:
+            pSTR.append('XY')
+            pSTR.append('YX')
+            pSTR.append('YY')
     
     # dim0 --> npol=2: 0=RR, 1=LL
     #          npol=4: 0=RR, 1=RL, 2=LR, 3=LL
@@ -488,7 +510,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 3.0 released 28 March 2015
+    #    Version 3.1 released 10 June 2015
     #    Tested with CASA Version 4.3.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
@@ -499,7 +521,7 @@ def pieflag(vis,
     
     startTime = time.time()
     casalog.origin('pieflag')
-    casalog.post('--> pieflag version 3.0')
+    casalog.post('--> pieflag version 3.1')
     
     if (not staticflag) and (not dynamicflag):
         casalog.post('*** ERROR: You need to select static or dynamic flagging.', 'ERROR')
@@ -576,8 +598,13 @@ def pieflag(vis,
             scan_list.append(int(scan))
     
     inttime=scan_summary[str(scan_list[0])]['0']['IntegrationTime']
+    # get around potential floating point issues by rounding to nearest 1e-5 seconds
+    if inttime != round(inttime,5):
+        casalog.post('*** WARNING: It seems your integration time is specified to finer than 1e-5 seconds.','WARN')
+        casalog.post('***          pieflag will assume this is a rounding error and carry on.','WARN')
+    
     for i in range(len(scan_list)):
-        if inttime != scan_summary[str(scan_list[i])]['0']['IntegrationTime']:
+        if round(inttime,5) != round(scan_summary[str(scan_list[i])]['0']['IntegrationTime'],5):
             casalog.post('*** ERROR: Bummer, pieflag is not set up to handle '+\
                               'changing integration times throughout your MS.', 'ERROR')
             casalog.post('*** ERROR: Exiting pieflag.','ERROR')
@@ -601,6 +628,16 @@ def pieflag(vis,
     # assume each spw has the same number of channels
     nchan=vtble.shape[0]
     
+    # check that spw frequencies increase monotonically
+    spwcheck=vtble[0,0]
+    for s in range(1,len(vtble[0,:])):
+        if vtble[0,s]<spwcheck:
+	    casalog.post("*** ERROR: Your spw's are not ordered with increasing frequency.",'ERROR')
+	    casalog.post('*** ERROR: Consider splitting your data and restarting pieflag. Exiting','ERROR')
+	    return
+	
+	spwcheck=vtble[0,s]
+    
     # get number of polarizations, assume they don't change throughout observation
     # get details from the first user-selected spw within the first scan on target field
     # note: I won't assume that spw specifies data_desc_id in the main table, even
@@ -618,11 +655,23 @@ def pieflag(vis,
     polid=temptb.getcell('POLARIZATION_ID')
     tb.open(vis+'/POLARIZATION')
     npol=tb.getcell('NUM_CORR',polid)
+    poltype=tb.getcell('CORR_TYPE',polid)
     tb.close
     
     if not (npol == 2 or npol == 4):
-        casalog.post('*** ERROR: You data contains '+str(npol)+' polarization products.','ERROR')
-        casalog.post('*** ERROR: pieflag can only handle 2 (RR/LL) or 4 (RR/RL/LR/LL). Exiting.','ERROR')
+        casalog.post('*** ERROR: Your data contains '+str(npol)+' polarization products.','ERROR')
+        casalog.post('*** ERROR: pieflag can only handle 2 (eg RR/LL) or 4 (eg RR/RL/LR/LL). Exiting.','ERROR')
+        return
+    
+    # see stokes.h for details
+    if poltype[0] == 5:
+        # circular
+        feedbasis = 1
+    elif poltype[0] == 9:
+        #linear
+        feedbasis = 0
+    else:
+        casalog.post('*** ERROR: Your data uses an unknown feed basis. Exiting','ERROR')
         return
     
     casalog.post('--> Some details about your data:')
@@ -630,29 +679,46 @@ def pieflag(vis,
     casalog.post('    number of baselines = '+str(nbaselines))
     casalog.post('    spectral windows to process = '+str(spw))
     casalog.post('    number of channels per spectral window = '+str(nchan))
+    if feedbasis:
+        casalog.post('    feed basis = circular')
+    else:
+        casalog.post('    feed basis = linear')
+    
     casalog.post('    number of polarization products to process = '+str(npol))
     casalog.post('--> Statistics of pre-existing flags:')
     flag0 = np.zeros((nspw,npol+1))
     for i in range(nspw):
-        flag0[i] = pieflag_getflagstats(vis,field,spw[i],npol)
+        flag0[i] = pieflag_getflagstats(vis,field,spw[i],npol,feedbasis)
         RRs="{:.1f}".format(flag0[i][0])
         LLs="{:.1f}".format(flag0[i][1])
         comb="{:.1f}".format(flag0[i][2])
         if npol == 2:
-            outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    flagged data in spw='+str(spw[i])+':  XX='+RRs+'%  YY='+LLs+'%  total='+comb+'%'
         else:
             RLs="{:.1f}".format(flag0[i][3])
             LRs="{:.1f}".format(flag0[i][4])
-            outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    flagged data in spw='+str(spw[i])+':  XX='+RRs+'%  XY='+RLs+'%  YX='+LRs+'%  YY='+LLs+'%  total='+comb+'%'
         
         casalog.post(outstr)
     
     # Check there are enough spectral windows to perform the fitting later on. If not, lower the order.
     if fitorder_RR_LL > nspw-1:
         if fitorder_RR_LL == 2:
-            casalog.post('*** WARNING: pieflag needs at least 3 spectral windows to fit for RR or LL spectral curvature.','WARN')
+            if feedbasis:
+                casalog.post('*** WARNING: pieflag needs at least 3 spectral windows to fit for RR or LL spectral curvature.','WARN')
+            else:
+                casalog.post('*** WARNING: pieflag needs at least 3 spectral windows to fit for XX or YY spectral curvature.','WARN')
         else:
-            casalog.post('*** WARNING: pieflag needs at least 2 spectral windows to fit for RR or LL spectral index.','WARN')
+            if feedbasis:
+                casalog.post('*** WARNING: pieflag needs at least 2 spectral windows to fit for RR or LL spectral index.','WARN')
+            else:
+                casalog.post('*** WARNING: pieflag needs at least 2 spectral windows to fit for XX or YY spectral index.','WARN')
         
         if nspw == 2:
             fitorder_RR_LL=1
@@ -698,6 +764,13 @@ def pieflag(vis,
             casalog.post('*** ERROR: Your SEFD file must be in order of increasing frequency.','ERROR')
             casalog.post('*** ERROR: Exiting pieflag.','ERROR')
             return
+        
+        for i in range(nspw):
+            if (vtble[:,spw[i]].min() < sefdRAW[:,0].min()) or (vtble[:,spw[i]].max() > sefdRAW[:,0].max()):
+                casalog.post('*** ERROR: pieflag cannot extrapolate your SEFD.','ERROR')
+                casalog.post('*** ERROR: Provide new SEFD covering your entire frequency range.','ERROR')
+                casalog.post('*** ERROR: Exiting pieflag.','ERROR')
+                return
         
         sefdINTERP = interp1d(sefdRAW[:,0],sefdRAW[:,1])
         for i in range(nspw):
@@ -755,7 +828,7 @@ def pieflag(vis,
         pieflag_flag(myname,mypath,
                      threadID,nthreads,field,
                      vtble.tolist(),inttime,nant,0,nbaselines,
-                     ddid,spw,refchan,nchan,npol,
+                     ddid,spw,refchan,nchan,npol,feedbasis,
                      fitorder.tolist(),sefd.tolist(),
                      staticflag,madmax,binsamples,
                      dynamicflag,chunktime,stdmax,maxoffset,
@@ -829,16 +902,22 @@ def pieflag(vis,
     casalog.post('--> Statistics of final flags (including pre-existing):')
     flag1 = np.zeros((nspw,npol+1))
     for i in range(nspw):
-        flag1[i] = pieflag_getflagstats(vis,field,spw[i],npol)
+        flag1[i] = pieflag_getflagstats(vis,field,spw[i],npol,feedbasis)
         RRs="{:.1f}".format(flag1[i][0])
         LLs="{:.1f}".format(flag1[i][1])
         comb="{:.1f}".format(flag1[i][2])
         if npol == 2:
-            outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    flagged data in spw='+str(spw[i])+':  XX='+RRs+'%  YY='+LLs+'%  total='+comb+'%'
         else:
             RLs="{:.1f}".format(flag1[i][3])
             LRs="{:.1f}".format(flag1[i][4])
-            outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    flagged data in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    flagged data in spw='+str(spw[i])+':  XX='+RRs+'%  XY='+RLs+'%  YX='+LRs+'%  YY='+LLs+'%  total='+comb+'%'
         
         casalog.post(outstr)
     
@@ -848,11 +927,17 @@ def pieflag(vis,
         LLs="{:.1f}".format(flag1[i][1]-flag0[i][1])
         comb="{:.1f}".format(flag1[i][2]-flag0[i][2])
         if npol == 2:
-            outstr='    data flagged in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    data flagged in spw='+str(spw[i])+':  RR='+RRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    data flagged in spw='+str(spw[i])+':  XX='+RRs+'%  YY='+LLs+'%  total='+comb+'%'
         else:
             RLs="{:.1f}".format(flag1[i][3]-flag0[i][3])
             LRs="{:.1f}".format(flag1[i][4]-flag0[i][4])
-            outstr='    data flagged in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            if feedbasis:
+                outstr='    data flagged in spw='+str(spw[i])+':  RR='+RRs+'%  RL='+RLs+'%  LR='+LRs+'%  LL='+LLs+'%  total='+comb+'%'
+            else:
+                outstr='    data flagged in spw='+str(spw[i])+':  XX='+RRs+'%  XY='+RLs+'%  YX='+LRs+'%  YY='+LLs+'%  total='+comb+'%'
         
         casalog.post(outstr)
     
