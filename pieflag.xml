@@ -171,7 +171,10 @@
                 
 		4. Apply your calibration solutions to the data. pieflag
 		   will perform all analysis using the 'CORRECTED_DATA'
-		   column of your measurement set.
+		   column of your measurement set. If this column is not
+                   present (e.g. you have split your corrected data into
+                   a new measurement set), pieflag will operate on the
+                   'DATA' column.
 		
                 5. Plot amplitude versus frequency for your data. Check
 		   that the spectrum has not been artificially normalized
@@ -209,7 +212,6 @@
                 
 		
                 Assumptions:
-                 * Lock files are unimportant; pieflag will remove them.
                  * Existing flags are backed up, either from a previous
                    task (e.g. applycal) or using flagmanager (mode=save).
                    pieflag will not create a backup prior to operation.
@@ -250,11 +252,11 @@
                 http://arxiv.org/abs/astro-ph/0603216
                 
                 Rewritten for use in CASA and updated to account for
-                wideband and SEFD effects by Christopher A. Hales 2014.
+                wideband and SEFD effects by Christopher A. Hales in 2014.
                                 
-                Version 3.1
-                Tested with CASA Version 4.3.0 using Jansky VLA data
-                10 June 2015
+                Version 3.2
+                Tested with CASA Version 4.5.0 using Jansky VLA data
+                19 February 2016
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -272,6 +274,7 @@
                 
                 If you use pieflag we would appreciate your acknowledgement
                 by citing Enno's PASA paper and Chris' ASCL entry (see above).
+                
                 
                 
         </description>
@@ -445,7 +448,8 @@
        
        
        vis -- Name of input measurement set containing bandpass-calibrated
-              data in the 'CORRECTED_DATA' column.
+              data in the 'CORRECTED_DATA' column. If this column is not
+              present, pieflag will operate on the 'DATA' column.
        
        
        field -- Field index number (integer). pieflag can only operate on a
