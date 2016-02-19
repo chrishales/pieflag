@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from simple_cluster import *
 from simple_cluster import JobData
 
-# Copyright (c) 2014-2015, Christopher A. Hales
+# Copyright (c) 2014-2016, Christopher A. Hales
 # All rights reserved.
 #
 # BSD 3-Clause Licence
@@ -47,7 +47,10 @@ from simple_cluster import JobData
 #   3.0  28Mar2015  Enabled parallel processing
 #   3.1  10Jun2015  Added error messages for SEFD extrapolation
 #                   and integration time rounding problem, and
-#                   fixed default numthreads.
+#                   fixed default numthreads
+#   3.2  19Feb2016  Fixed parallel processing bug, enabled
+#                   operation using DATA column, and removed
+#                   lock file deletion
 #
 
 # See additional information in pieflag function
@@ -60,7 +63,7 @@ def pieflag_getflagstats(vis,field,spw,npol,feedbasis):
     af.parseagentparameters(ag0)
     af.init()
     temp=af.run(writeflags=False)
-    af.done
+    af.done()
     casalog.filter('INFO')
     if feedbasis:
         RR=temp['report0']['correlation']['RR']['flagged'] / temp['report0']['correlation']['RR']['total'] * 100
@@ -83,7 +86,7 @@ def pieflag_getflagstats(vis,field,spw,npol,feedbasis):
     
     return flagstats
 
-def pieflag_flag(vis,mypath,
+def pieflag_flag(vis,mypath,datacol,
                  threadID,nthreads,field,
                  vtbleLIST,inttime,nant,bL,nb,
                  ddid,spw,refchan,nchan,npol,feedbasis,
@@ -179,14 +182,14 @@ def pieflag_flag(vis,mypath,
                                ' && FIELD_ID=='+str(field)+' && DATA_DESC_ID=='+str(ddid[s])+\
                                ' && FLAG_ROW==False && FLAG['+str(p)+','+str(refchan[s])+']==False giving '
                     #           ' && WEIGHT['+str(p)+']>0 giving '
-                    tempstr2 = '[abs(CORRECTED_DATA['+str(p)+','+str(refchan[s])+'])]])'
+                    tempstr2 = '[abs('+datacol.upper()+'['+str(p)+','+str(refchan[s])+'])]])'
                     tempval = tb.calc('count'+tempstr1+tempstr2)[0]
                     
                     if tempval > 0:
                         validspw[p][s] = 1
                         if staticflag:
                             Srcy[s][p][0] = tb.calc('median'+tempstr1+tempstr2)[0]
-                            tempstr3 = '[abs(abs(CORRECTED_DATA['+str(p)+','+str(refchan[s])+'])-'+\
+                            tempstr3 = '[abs(abs('+datacol.upper()+'['+str(p)+','+str(refchan[s])+'])-'+\
                                        str(Srcy[s][p][0])+')]])'
                             Srcy[s][p][1] = tb.calc('median'+tempstr1+tempstr3)[0]
                     else:
@@ -261,7 +264,7 @@ def pieflag_flag(vis,mypath,
                 chunk = 0
                 while moretodo:
                     tempflagD = ms.getdata('flag')['flag']
-                    tempdataD = abs(ms.getdata('corrected_data')['corrected_data'])
+                    tempdataD = abs(ms.getdata(datacol.lower())[datacol.lower()])
                     tempddidD = ms.getdata('data_desc_id')['data_desc_id']
                     for s in range(nspw):
                         for p in range(npol):
@@ -335,7 +338,7 @@ def pieflag_flag(vis,mypath,
                     ms.msselect({'field':str(field),'baseline':str(ant1)+'&&'+str(ant2),'spw':str(spw[s])})
                     # get data for this spw, accounting for existing flags
                     tempflag = ms.getdata('flag')
-                    tempdata = abs(ms.getdata('corrected_data')['corrected_data'])
+                    tempdata = abs(ms.getdata(datacol.lower())[datacol.lower()])
                     tempflagpf = np.zeros(tempdata.shape)
                     temptime = ms.getdata('time')['time']
                     casalog.filter('INFO')
@@ -510,8 +513,8 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 3.1 released 10 June 2015
-    #    Tested with CASA Version 4.3.0 using Jansky VLA data
+    #    Version 3.2 released 19 February 2016
+    #    Tested with CASA Version 4.5.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
     #    Reference for this version:
@@ -521,7 +524,7 @@ def pieflag(vis,
     
     startTime = time.time()
     casalog.origin('pieflag')
-    casalog.post('--> pieflag version 3.1')
+    casalog.post('--> pieflag version 3.2')
     
     if (not staticflag) and (not dynamicflag):
         casalog.post('*** ERROR: You need to select static or dynamic flagging.', 'ERROR')
@@ -534,6 +537,13 @@ def pieflag(vis,
     mypath=os.path.split(vis)[0]
     myname=os.path.split(vis)[1]
     
+    tb.open(vis)
+    if any('CORRECTED_DATA' in colnames for colnames in tb.colnames()):
+        datacol='CORRECTED_DATA'
+    else:
+        datacol='DATA'
+    
+    tb.close()
     if not mycluster:
         # don't start parallel environment if numthreads=1
         if numthreads == 1:
@@ -613,7 +623,7 @@ def pieflag(vis,
     # get number of baselines
     tb.open(vis+'/ANTENNA')
     atble=tb.getcol('NAME')
-    tb.close
+    tb.close()
     nant=atble.shape[0]
     nbaselines=nant*(nant-1)/2
     
@@ -623,7 +633,7 @@ def pieflag(vis,
     # channel to frequency (Hz) conversion
     tb.open(vis+'/SPECTRAL_WINDOW')
     vtble=tb.getcol('CHAN_FREQ')
-    tb.close
+    tb.close()
     # vtble format is vtble[channel][spw]
     # assume each spw has the same number of channels
     nchan=vtble.shape[0]
@@ -651,12 +661,12 @@ def pieflag(vis,
     for s in range(nspw):
         ddid.append(tempddid.index(spw[s]))
     
-    tb.close
+    tb.close()
     polid=temptb.getcell('POLARIZATION_ID')
     tb.open(vis+'/POLARIZATION')
     npol=tb.getcell('NUM_CORR',polid)
     poltype=tb.getcell('CORR_TYPE',polid)
-    tb.close
+    tb.close()
     
     if not (npol == 2 or npol == 4):
         casalog.post('*** ERROR: Your data contains '+str(npol)+' polarization products.','ERROR')
@@ -671,10 +681,11 @@ def pieflag(vis,
         #linear
         feedbasis = 0
     else:
-        casalog.post('*** ERROR: Your data uses an unknown feed basis. Exiting','ERROR')
+        casalog.post('*** ERROR: Your data uses an unsupported feed basis. Exiting','ERROR')
         return
     
     casalog.post('--> Some details about your data:')
+    casalog.post('    data column to process = '+datacol)
     casalog.post('    integration time = '+str(inttime)+' sec')
     casalog.post('    number of baselines = '+str(nbaselines))
     casalog.post('    spectral windows to process = '+str(spw))
@@ -817,15 +828,15 @@ def pieflag(vis,
         boxtime = 0
         boxthresh = 0
     
-    # forcefully remove all lock files
-    os.system('find '+vis+' -name "*lock" -print | xargs rm')
+    # forcibly remove all lock files
+    #os.system('find '+vis+' -name "*lock" -print | xargs rm')
     
     if not mycluster and numthreads == 1:
         casalog.post('--> pieflag will now flag your data in serial mode.')
         
         threadID = -1
         
-        pieflag_flag(myname,mypath,
+        pieflag_flag(myname,mypath,datacol,
                      threadID,nthreads,field,
                      vtble.tolist(),inttime,nant,0,nbaselines,
                      ddid,spw,refchan,nchan,npol,feedbasis,
@@ -852,10 +863,10 @@ def pieflag(vis,
         myjob=[]
         threadID=1
         for i in range(nthreads):
-            myjob.append(JobData('pieflag_flag',{'vis':myname,'mypath':mypath,
+            myjob.append(JobData('pieflag_flag',{'vis':myname,'mypath':mypath,'datacol':datacol,
                         'threadID':threadID,'nthreads':nthreads,'field':field,
                         'vtbleLIST':vtble.tolist(),'inttime':inttime,'nant':nant,'bL':bL[i],'nb':nb[i],
-                        'ddid':ddid,'spw':spw,'refchan':refchan,'nchan':nchan,'npol':npol,
+                        'ddid':ddid,'spw':spw,'refchan':refchan,'nchan':nchan,'npol':npol,'feedbasis':feedbasis,
                         'fitorderLIST':fitorder.tolist(),'sefdLIST':sefd.tolist(),
                         'staticflag':staticflag,'madmax':madmax,'binsamples':binsamples,
                         'dynamicflag':dynamicflag,'chunktime':chunktime,'stdmax':stdmax,'maxoffset':maxoffset,
@@ -941,8 +952,8 @@ def pieflag(vis,
         
         casalog.post(outstr)
     
-    # forcefully remove all lock files
-    os.system('find '+vis+' -name "*lock" -print | xargs rm')
+    # forcibly remove all lock files
+    #os.system('find '+vis+' -name "*lock" -print | xargs rm')
     
     t=time.time()-startTime
     casalog.post('--> pieflag run time:  '+str(int(t//3600))+' hours  '+\
