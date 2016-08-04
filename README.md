@@ -15,9 +15,11 @@ An extensive help file is included with pieflag that includes instructions for p
 
 Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
-Lateset version: 3.2 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+Starting with version 4.0, pieflag is capable of parallel processing within the CASA MPI environment. If you are using a CASA version from series 4.3 or earlier, you are limited to using pieflag version ([3.2](https://github.com/chrishales/pieflag/releases/v3.2)).
 
-Tested with: CASA Version 4.5.0
+Lateset version: 4.0 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+
+Tested with: CASA 4.6.0 and 4.7 stables using Jansky VLA data
 
 pieflag originally written by Enno Middelberg 2005-2006 (Reference: [E. Middelberg, 2006, PASA, 23, 64](http://arxiv.org/abs/astro-ph/0603216)). Starting with Version 2.0, pieflag has been modified for use in CASA and updated to include wideband and SEFD effects by Christopher A. Hales (Reference: [C. A. Hales, E. Middelberg, 2014, Astrophysics Source Code Library, 1408.14](http://adsabs.harvard.edu/abs/2014ascl.soft08014H)).
 
@@ -50,9 +52,12 @@ help pieflag
 ```
 Now set some parameters and press go!
 
-For a more permanent installation, place the source files into a dedicated pieflag code directory and perform the steps above. Then go to the hidden directory ```.casa``` which resides in your home directory and create a file called ```init.py```. In this file, put the lines
+For a more permanent installation, place the source files into a dedicated pieflag code directory and perform the steps above. Then go to the hidden directory ```.casa``` which resides in your home directory and create a file called ```init.py```. If you are installing version 4.0 or higher, include the following line
 ```
 execfile('/<path_to_pieflag_directory>/mytasks.py')
+```
+If you are installing version 3.2 or earlier, also add the following lines
+```
 os.environ['PYTHONPATH']='/<path_to_pieflag_directory>:'+os.environ['PYTHONPATH']
 sys.path.append('/<path_to_pieflag_directory>')
 ```
