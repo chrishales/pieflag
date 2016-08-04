@@ -215,10 +215,7 @@
                  * Existing flags are backed up, either from a previous
                    task (e.g. applycal) or using flagmanager (mode=save).
                    pieflag will not create a backup prior to operation.
-                 * Data is in either the circular or linear feed basis.
                  * All selected spw's have the same number of channels.
-                 * Spw's are ordered with increasing frequency.
-                 * The integration time for your spw's doesn't change.
                  * pieflag doesn't need to flag your reference channels
                  * For a given baseline, if the reference channel for a
                    correlation is missing (e.g. due to online flags),
@@ -228,7 +225,13 @@
                    dynamic, or extend mode, all will be flagged.
                  * Scans do not have multiple subscans. If they do,
                    then pieflag will only operate on subscan 0.
-                
+		 * pieflag is MPI-aware but will only perform parallel
+		   processing if you are in an MPI-enabled CASA session
+		   and you provide a Multi-MS that has been partitioned
+		   by baseline. See the CASA Cookbook for instructions
+		   on parallel processing. Data provided in regular MS
+		   format will be processed in serial mode.
+		
                 
 		
                 Limitations:
@@ -251,12 +254,12 @@
                 Reference: E. Middelberg, 2006, PASA, 23, 64
                 http://arxiv.org/abs/astro-ph/0603216
                 
-                Rewritten for use in CASA and updated to account for
-                wideband and SEFD effects by Christopher A. Hales in 2014.
+                Version 2.0 rewritten for use in CASA and updated to account
+                for wideband and SEFD effects by Christopher A. Hales in 2014.
                                 
-                Version 3.2
-                Tested with CASA Version 4.5.0 using Jansky VLA data
-                19 February 2016
+                Version 4.0
+                Tested within CASA 4.6.0 and 4.7 stables using Jansky VLA data
+                4 August 2016
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -281,7 +284,7 @@
 
         <input>
             <param type="string" name="vis" mustexist="true">
-                <description>input MS</description>
+                <description>input MS or MMS</description>
                 <value />
             </param>
             <param type="int" name="field">
@@ -376,22 +379,6 @@
 		<value>10.0</value>
             </param>
 
-            <param type="bool" name="mycluster">
-                <description>user defined cluster for parallelism? (False=automatic)</description>
-                <!-- dummy value, see constraints section below for default value -->
-                <value>False</value>
-            </param>
-            <param type="int" name="numthreads" subparam="true">
-                <description>number of threads on local host (0=90% CPU, 1=serial)</description>
-                <!-- dummy value, see constraints section below for default value -->
-		<value>1</value>
-            </param>
-            <param type="string" name="configfile" subparam="true">
-                <description>name of file containing cluster details</description>
-                <!-- dummy value, see constraints section below for default value -->
-                <value>default</value>
-            </param>
-
 
             <constraints>
                <when param="scalethresh">
@@ -426,15 +413,6 @@
                         <default param="boxthresh"><value type="double">10.0</value></default>
                     </equals>
                </when>
-		
-               <when param="mycluster">
-                    <equals type="bool" value="False">
-                        <default param="numthreads"><value type="int">1</value></default>
-                    </equals>
-                    <equals type="bool" value="True">
-                        <default param="configfile"><value type="string" mustexist="true">pieflag_cluster-config.txt</value></default>
-                    </equals>
-               </when>
             </constraints>
         </input>
 
@@ -447,9 +425,9 @@
    Keyword arguments:
        
        
-       vis -- Name of input measurement set containing bandpass-calibrated
-              data in the 'CORRECTED_DATA' column. If this column is not
-              present, pieflag will operate on the 'DATA' column.
+       vis -- Name of input MS or MMS containing bandpass-calibrated data
+              in the 'CORRECTED_DATA' column. If this column is not present,
+              pieflag will operate on the 'DATA' column.
        
        
        field -- Field index number (integer). pieflag can only operate on a
@@ -574,30 +552,6 @@
                         of flagged visibilities in boxtime beyond which
                         the entire boxcar will be flagged on all
                         correlations for that channel and baseline.
-       
-       
-       mycluster -- If true, specify a custom cluster file for parallel
-                    processing. If False, pieflag will set up a default
-                    cluster using numthreads on your local host.
-                    
-                    NOTE: The current version of pieflag makes use of CASA's
-                          parallel framework. However, the task 'partition'
-                          cannot currently partition baselines. Until this
-                          becomes available, pieflag will create copies of
-                          your MS for each thread to operate on and remove
-                          them when done. pieflag will not check if you have
-                          enough disk space to do this.
-         
-         * numthreads  -- Number of threads (integer) for parallel
-                          processing on your local host. For N=0, pieflag
-                          will utilize as many threads as possible up to
-                          90% of idle CPU capacity. For N>0, pieflag will
-                          create N-1 copies of your MS. Performance will
-                          degrade if N parallel threads cannot be
-                          accommodated by your system (/proc/cpuinfo).
-         
-         * configfile  -- Name of file containing custom cluster configuration.
-                          See CASA's simple_cluster helpfile for examples.
        
        
         </example>
