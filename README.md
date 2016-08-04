@@ -15,7 +15,7 @@ An extensive help file is included with pieflag that includes instructions for p
 
 Once you have carried out your pre-processing and selected the mode of operation, pieflag should work well 'out of the box' with its default parameters. By comparing to a clean reference channel, essentially all bad data will be identified and flagged by pieflag.
 
-Starting with version 4.0, pieflag is capable of parallel processing within the CASA MPI environment. If you are using a CASA version from series 4.3 or earlier, you are limited to using pieflag version ([3.2](https://github.com/chrishales/pieflag/releases/v3.2)).
+Starting with version 4.0, pieflag is capable of parallel processing within the CASA MPI environment. Note that if you are using a CASA version from series 4.3 or earlier, you are limited to using pieflag version [3.2](https://github.com/chrishales/pieflag/releases/v3.2).
 
 Lateset version: 4.0 ([download here](https://github.com/chrishales/pieflag/releases/latest))
 
