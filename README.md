@@ -66,4 +66,4 @@ pieflag will now be available when you open a fresh terminal and start CASA with
 Acknowledging use of pieflag
 ======
 
-We would appreciate your acknowledgement by citing the ASCL entry shown above.
+We would appreciate your acknowledgement by citing [this ASCL entry](http://adsabs.harvard.edu/abs/2014ascl.soft08014H).
