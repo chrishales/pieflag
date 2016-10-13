@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 import partitionhelper as ph
 from mpi4casa.MPICommandClient import MPICommandClient
 
-# Released under a BSD 3-Clause License
+# pieflag is released under a BSD 3-Clause License
 # See LICENSE for details
 
 # HISTORY:
@@ -30,7 +30,7 @@ from mpi4casa.MPICommandClient import MPICommandClient
 #                   operation using DATA column, and removed
 #                   lock file deletion
 #   4.0   4Aug2016  Upgraded to use MPI parallelism in CASA 4.6.0+
-#   4.1  13Oct2016  Updated license, no changes to code
+#   4.1  13Oct2016  Fixed license, no changes to code
 #
 
 # See additional information in pieflag function below
@@ -500,7 +500,7 @@ def pieflag(vis,
     #    from the Jansky VLA Exposure Calculator.
     #
     #    Version 4.1 released 13 October 2016
-    #    Tested within CASA 4.7.0 using Jansky VLA data
+    #    Tested with CASA 4.7.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
     #    Reference for this version:
