@@ -9,32 +9,8 @@ from scipy.interpolate import interp1d
 import partitionhelper as ph
 from mpi4casa.MPICommandClient import MPICommandClient
 
-# Copyright (c) 2014, Christopher A. Hales
-# All rights reserved.
-#
-# BSD 3-Clause Licence
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#     * Redistributions of source code must retain the above copyright
-#       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#     * The NAMES OF ITS CONTRIBUTORS may not be used to endorse or promote
-#       products derived from this software without specific prior written
-#       permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL C. A. HALES BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
-# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# Released under a BSD 3-Clause License
+# See LICENSE for details
 
 # HISTORY:
 #   1.0       2005  Initial version by Enno Middelberg, designed
@@ -54,6 +30,7 @@ from mpi4casa.MPICommandClient import MPICommandClient
 #                   operation using DATA column, and removed
 #                   lock file deletion
 #   4.0   4Aug2016  Upgraded to use MPI parallelism in CASA 4.6.0+
+#   4.1  13Oct2016  Updated license, no changes to code
 #
 
 # See additional information in pieflag function below
@@ -522,8 +499,8 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 4.0 released 4 August 2016
-    #    Tested within CASA 4.6.0 and 4.7 stables using Jansky VLA data
+    #    Version 4.1 released 13 October 2016
+    #    Tested within CASA 4.7.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
     #    Reference for this version:
