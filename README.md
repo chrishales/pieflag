@@ -17,13 +17,13 @@ Once you have carried out your pre-processing and selected the mode of operation
 
 Starting with version 4.0, pieflag is capable of parallel processing within the CASA MPI environment. Note that if you are using a CASA version from series 4.3 or earlier, you are limited to using pieflag version [3.2](https://github.com/chrishales/pieflag/releases/v3.2).
 
-Latest version: 4.1 ([download here](https://github.com/chrishales/pieflag/releases/latest))
+Latest version: 4.2 ([download here](https://github.com/chrishales/pieflag/releases/latest))
 
 Tested with CASA 4.7.0 using Jansky VLA data
 
 pieflag originally written by Enno Middelberg 2005-2006 (Reference: [E. Middelberg, 2006, PASA, 23, 64](http://arxiv.org/abs/astro-ph/0603216)). Starting with Version 2.0, pieflag has been rewritten for use in CASA and updated to include wideband and SEFD effects by Christopher A. Hales (Reference: [C. A. Hales, E. Middelberg, 2014, Astrophysics Source Code Library, 1408.14](http://adsabs.harvard.edu/abs/2014ascl.soft08014H)).
 
-pieflag is released under a BSD 3-Clause Licence (open source, commercially useable); refer to LICENSE for details.
+pieflag is released under a BSD 3-Clause License (open source, commercially useable); refer to LICENSE for details.
 
 pieflag logo created by Chris Hales and the amazing graphic designer [Jasmin McDonald](http://www.theloop.com.au/JasminMcDonald/portfolio).
 
@@ -38,7 +38,7 @@ Place the source files into a directory containing your measurement set. Without
 ```
 os.system('buildmytasks')
 ```
-then exit CASA. A number of files should have been produced, including ```mytasks.py```. Open CASA again then type
+then exit CASA. A number of files should have been produced, including ```mytasks.py```. Reopen CASA and type
 ```
 execfile('mytasks.py')
 ```
