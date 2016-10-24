@@ -5,7 +5,7 @@
     xsi:schemaLocation="http://casa.nrao.edu/schema/casa.xsd
     file:///opt/casa/code/xmlcasa/xml/casa.xsd">
 
-    <task type="function" name="pieflag" category="analysis">
+    <task type="function" name="pieflag" category="editing">
         <shortdescription>Flags bad data by comparing with clean channels in bandpass-calibrated data.</shortdescription>
         <description>
                 
@@ -257,9 +257,9 @@
                 Version 2.0 rewritten for use in CASA and updated to account
                 for wideband and SEFD effects by Christopher A. Hales in 2014.
                                 
-                Version 4.1
+                Version 4.2
                 Tested with CASA 4.7.0 using Jansky VLA data
-                13 October 2016
+                24 October 2016
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
@@ -269,7 +269,7 @@
                 bands from the Jansky VLA Exposure Calculator.
                 
                 Code available at: http://github.com/chrishales/pieflag
-                pieflag is released under a BSD 3-Clause Licence;
+                pieflag is released under a BSD 3-Clause License;
 		refer to LICENSE for details.
 		Reference: C. A. Hales, E. Middelberg, 2014, Astrophysics
 		Source Code Library, 1408.014
