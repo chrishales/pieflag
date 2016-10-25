@@ -32,6 +32,7 @@ from mpi4casa.MPICommandClient import MPICommandClient
 #   4.0   4Aug2016  Upgraded to use MPI parallelism in CASA 4.6.0+
 #   4.1  13Oct2016  Fixed license, no changes to code
 #   4.2  24Oct2016  Updated code category, no changes to code
+#   4.3  25Oct2016  Fixed version number (affects 4.1, 4.2)
 #
 
 # See additional information in pieflag function below
@@ -500,7 +501,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 4.2 released 24 October 2016
+    #    Version 4.3 released 25 October 2016
     #    Tested with CASA 4.7.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
@@ -511,7 +512,7 @@ def pieflag(vis,
     
     startTime = time.time()
     casalog.origin('pieflag')
-    casalog.post('--> pieflag version 4.0')
+    casalog.post('--> pieflag version 4.3')
     
     if (not staticflag) and (not dynamicflag):
         casalog.post('*** ERROR: You need to select static or dynamic flagging.', 'ERROR')
