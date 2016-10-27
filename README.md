@@ -17,7 +17,7 @@ Once you have carried out your pre-processing and selected the mode of operation
 
 Starting with version 4.0, pieflag is capable of parallel processing within the CASA MPI environment. Note that if you are using a CASA version from series 4.3 or earlier, you are limited to using pieflag version [3.2](https://github.com/chrishales/pieflag/releases/v3.2).
 
-Latest version: 4.3 ([download here](https://github.com/chrishales/pieflag/releases/tag/v4.3))
+Latest version: 4.4 ([download here](https://github.com/chrishales/pieflag/releases/v4.4))
 
 Tested with CASA 4.7.0 using Jansky VLA data
 
