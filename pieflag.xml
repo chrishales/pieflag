@@ -257,9 +257,9 @@
                 Version 2.0 rewritten for use in CASA and updated to account
                 for wideband and SEFD effects by Christopher A. Hales in 2014.
                                 
-                Version 4.3
+                Version 4.4
                 Tested with CASA 4.7.0 using Jansky VLA data
-                25 October 2016
+                26 October 2016
                 
                 Thanks to Kumar Golap, Justo Gonzalez, Jeff Kern,
                 Urvashi Rau, Sanjay Bhatnagar, and of course Enno Middelberg
