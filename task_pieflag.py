@@ -33,6 +33,8 @@ from mpi4casa.MPICommandClient import MPICommandClient
 #   4.1  13Oct2016  Fixed license, no changes to code
 #   4.2  24Oct2016  Updated code category, no changes to code
 #   4.3  25Oct2016  Fixed version number (affects 4.1, 4.2)
+#   4.4  26Oct2016  Removed flag_row check, CASA does not
+#                   currently respect this column properly
 #
 
 # See additional information in pieflag function below
@@ -170,7 +172,7 @@ def pieflag_flag(vis,datacol,nthreads,field,
             for p in range(npol):
                 tempstr1 = '([select from '+vis+' where ANTENNA1=='+str(ant1)+' && ANTENNA2=='+str(ant2)+\
                            ' && FIELD_ID=='+str(field)+' && DATA_DESC_ID=='+str(ddid[s])+\
-                           ' && FLAG_ROW==False && FLAG['+str(p)+','+str(refchan[s])+']==False giving '
+                           ' && FLAG['+str(p)+','+str(refchan[s])+']==False giving '
                 #           ' && WEIGHT['+str(p)+']>0 giving '
                 tempstr2 = '[abs('+datacol.upper()+'['+str(p)+','+str(refchan[s])+'])]])'
                 tempval = tb.calc('count'+tempstr1+tempstr2)[0]
@@ -193,7 +195,6 @@ def pieflag_flag(vis,datacol,nthreads,field,
                     ms.reset()
                     try:
                         ms.msselect({'field':str(field),'baseline':str(ant1)+'&&'+str(ant2),'spw':str(spw[s])})
-                        # for some reason I can't do the following with flag_row? That or plotms is broken...
                         tempflag = ms.getdata('flag')
                         tempflag['flag'][:]=True
                         ms.putdata(tempflag)
@@ -501,7 +502,7 @@ def pieflag(vis,
     #    and to Bryan Butler for providing access to all other bands
     #    from the Jansky VLA Exposure Calculator.
     #
-    #    Version 4.3 released 25 October 2016
+    #    Version 4.4 released 26 October 2016
     #    Tested with CASA 4.7.0 using Jansky VLA data
     #    Available at: http://github.com/chrishales/pieflag
     #
@@ -512,7 +513,7 @@ def pieflag(vis,
     
     startTime = time.time()
     casalog.origin('pieflag')
-    casalog.post('--> pieflag version 4.3')
+    casalog.post('--> pieflag version 4.4')
     
     if (not staticflag) and (not dynamicflag):
         casalog.post('*** ERROR: You need to select static or dynamic flagging.', 'ERROR')
